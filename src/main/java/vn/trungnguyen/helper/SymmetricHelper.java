@@ -4,106 +4,138 @@ import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import java.security.Security;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 /**
- * SymmetricHelper - A helper class for symmetric encryption/decryption using AES-GCM-256 with Bouncy Castle
- * Random 12-byte (96-bit) IV
+ * SymmetricHelper - Utility for AES-256-GCM encryption/decryption.
+ *
+ * <p>The encrypted output is a JSON string containing:</p>
+ * <pre>
+ * {
+ *   "alg": "AES-GCM-256",
+ *   "iv":  "Base64IV",
+ *   "ct":  "Base64Ciphertext",
+ *   "tag": "Base64Tag"
+ * }
+ * </pre>
+ *
+ * <p>Public API only uses Base64 string for keys, never exposes javax.crypto.SecretKey.</p>
  */
 public class SymmetricHelper {
-    private static final String PROVIDER = "BC"; // Bouncy Castle
-    private static final String ALGORITHM = "AES";
-    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int KEY_LENGTH = 256; // AES-256
-    private static final int IV_LENGTH = 12;   // 96-bit IV
-    private static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
 
-    private final SecureRandom secureRandom;
+    public static class EncryptResult {
+        private final String alg;
+        private final String iv;
+        private final String ct;
+        private final String tag;
+        public EncryptResult(String alg, String iv, String ct, String tag) {
+            this.alg = alg;
+            this.iv = iv;
+            this.ct = ct;
+            this.tag = tag;
+        }
 
-    public SymmetricHelper() {
-        this.secureRandom = new SecureRandom();
-        Security.addProvider(new BouncyCastleProvider());
+        public EncryptResult(JSONObject obj) throws JSONException {
+            this.alg = obj.getString("alg");
+            this.iv = obj.getString("iv");
+            this.ct = obj.getString("ct");
+            this.tag = obj.getString("tag");
+        }
+
+        public EncryptResult(String json) throws JSONException {
+            this(new JSONObject(json));
+        }
+
+        public String getAlg() { return alg; }
+        public String getIv() { return iv; }
+        public String getCt() { return ct; }
+        public String getTag() { return tag; }
+
+        public JSONObject toJson() throws JSONException {
+            JSONObject obj = new JSONObject();
+            obj.put("alg", alg);
+            obj.put("iv", iv);
+            obj.put("ct", ct);
+            obj.put("tag", tag);
+            return obj;
+        }
     }
 
-    /**
-     * Generate a random AES-256 key as Base64 string.
-     */
-    public String generateKey() throws NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM, PROVIDER);
-        keyGenerator.init(KEY_LENGTH);
-        byte[] keyBytes = keyGenerator.generateKey().getEncoded();
+    private static final String ALGORITHM = "AES";
+    private static final String TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final int KEY_LENGTH = 256;       // AES-256
+    private static final int IV_LENGTH = 12;         // 96-bit IV
+    private static final int GCM_TAG_LENGTH = 16;    // 128-bit tag
+
+    private final SecureRandom secureRandom = new SecureRandom();
+
+    /** Generate a random AES-256 key, returned as Base64 string */
+    public String generateKeyBase64() throws Exception {
+        KeyGenerator keyGen = KeyGenerator.getInstance(ALGORITHM);
+        keyGen.init(KEY_LENGTH);
+        byte[] keyBytes = keyGen.generateKey().getEncoded();
         return Base64.getEncoder().encodeToString(keyBytes);
     }
 
-    /**
-     * Encrypt plaintext bytes using AES-GCM-256.
-     *
-     * @param plaintext data to encrypt
-     * @param base64Key AES key as Base64 string
-     * @return encrypted data (IV + ciphertext)
-     */
-    public byte[] encrypt(byte[] plaintext, String base64Key) throws Exception {
-        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
-        byte[] iv = generateIV();
-
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION, PROVIDER);
-        GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(keyBytes, ALGORITHM), gcmParameterSpec);
-        byte[] ciphertext = cipher.doFinal(plaintext);
-
-        byte[] encryptedData = new byte[IV_LENGTH + ciphertext.length];
-        System.arraycopy(iv, 0, encryptedData, 0, IV_LENGTH);
-        System.arraycopy(ciphertext, 0, encryptedData, IV_LENGTH, ciphertext.length);
-        return encryptedData;
-    }
-
-    /**
-     * Encrypt plaintext string and return Base64 ciphertext.
-     */
-    public String encrypt(String plaintext, String base64Key) throws Exception {
-        byte[] encrypted = encrypt(plaintext.getBytes("UTF-8"), base64Key);
-        return Base64.getEncoder().encodeToString(encrypted);
-    }
-
-    /**
-     * Decrypt ciphertext bytes (IV + ciphertext) using AES-GCM-256.
-     */
-    public byte[] decrypt(byte[] encryptedData, String base64Key) throws Exception {
-        if (encryptedData.length < IV_LENGTH) {
-            throw new IllegalArgumentException("Invalid encrypted data format.");
-        }
-
-        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
-        byte[] iv = Arrays.copyOfRange(encryptedData, 0, IV_LENGTH);
-        byte[] ciphertext = Arrays.copyOfRange(encryptedData, IV_LENGTH, encryptedData.length);
-
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION, "BC");
-        GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, ALGORITHM), gcmParameterSpec);
-        return cipher.doFinal(ciphertext);
-    }
-
-    /**
-     * Decrypt Base64 ciphertext and return plaintext string.
-     */
-    public String decrypt(String encryptedText, String base64Key) throws Exception {
-        byte[] encryptedData = Base64.getDecoder().decode(encryptedText);
-        byte[] decrypted = decrypt(encryptedData, base64Key);
-        return new String(decrypted, "UTF-8");
-    }
-
-    /**
-     * Generate a random IV.
-     */
-    private byte[] generateIV() {
+    /** Encrypt plaintext string -> EncryptResult */
+    public EncryptResult encrypt(String plaintext, String base64Key) throws Exception {
         byte[] iv = new byte[IV_LENGTH];
         secureRandom.nextBytes(iv);
-        return iv;
+
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, toSecretKey(base64Key), gcmSpec);
+
+        byte[] ciphertextWithTag = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
+
+        // Split ciphertext and tag
+        int ctLength = ciphertextWithTag.length - GCM_TAG_LENGTH;
+        byte[] ciphertext = Arrays.copyOfRange(ciphertextWithTag, 0, ctLength);
+        byte[] tag = Arrays.copyOfRange(ciphertextWithTag, ctLength, ciphertextWithTag.length);
+
+        return new EncryptResult(
+                "AES-GCM-256",
+                Base64.getEncoder().encodeToString(iv),
+                Base64.getEncoder().encodeToString(ciphertext),
+                Base64.getEncoder().encodeToString(tag)
+        );
+    }
+
+    /** Decrypt EncryptResult -> plaintext string */
+    public String decrypt(EncryptResult result, String base64Key) throws Exception {
+        if (!"AES-GCM-256".equals(result.getAlg())) {
+            throw new IllegalArgumentException("Unsupported algorithm: " + result.getAlg());
+        }
+
+        byte[] iv = Base64.getDecoder().decode(result.getIv());
+        byte[] ciphertext = Base64.getDecoder().decode(result.getCt());
+        byte[] tag = Base64.getDecoder().decode(result.getTag());
+
+        // Merge ciphertext + tag
+        byte[] ciphertextWithTag = new byte[ciphertext.length + tag.length];
+        System.arraycopy(ciphertext, 0, ciphertextWithTag, 0, ciphertext.length);
+        System.arraycopy(tag, 0, ciphertextWithTag, ciphertext.length, tag.length);
+
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+        cipher.init(Cipher.DECRYPT_MODE, toSecretKey(base64Key), gcmSpec);
+
+        byte[] plaintext = cipher.doFinal(ciphertextWithTag);
+        return new String(plaintext, StandardCharsets.UTF_8);
+    }
+
+    /** Helper: convert Base64 key string -> SecretKeySpec */
+    private SecretKeySpec toSecretKey(String base64Key) {
+        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
+        if (keyBytes.length != KEY_LENGTH / 8) {
+            throw new IllegalArgumentException("AES-256 key must be 32 bytes.");
+        }
+        return new SecretKeySpec(keyBytes, ALGORITHM);
     }
 }

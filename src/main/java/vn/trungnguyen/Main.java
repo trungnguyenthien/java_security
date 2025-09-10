@@ -12,22 +12,34 @@ public class Main {
         try {
             SymmetricHelper helper = new SymmetricHelper();
 
-            // 1. Tạo khóa
-            String key = helper.generateKey();
-            System.out.println("Khóa (Base64): " + key);
+            // 1. Generate a valid AES-256 key
+            String keyBase64 = helper.generateKeyBase64();
+            System.out.println("Key (Base64): " + keyBase64);
 
-            // 2. Mã hóa
-            String plaintext = "Xin chào, đây là tin nhắn bí mật!";
-            String encrypted = helper.encrypt(plaintext, key);
-            System.out.println("Bản rõ: " + plaintext);
-            System.out.println("Đã mã hóa: " + encrypted);
+            // 2. Original plaintext
+            String plaintext = "Xin chào, đây là thông điệp bí mật!";
+            System.out.println("Plaintext: " + plaintext);
 
-            // 3. Giải mã
-            String decrypted = helper.decrypt(encrypted, key);
-            System.out.println("Sau giải mã: " + decrypted);
+            // 3. Encrypt
+            SymmetricHelper.EncryptResult encrypted = helper.encrypt(plaintext, keyBase64);
+            System.out.println("Encrypted JSON: " + encrypted.toJson());
 
-            // Kiểm tra
-            System.out.println("Khớp với bản gốc: " + plaintext.equals(decrypted));
+            // 4. Decrypt successfully
+            String decrypted = helper.decrypt(encrypted, keyBase64);
+            System.out.println("Decrypted (success): " + decrypted);
+            System.out.println("Match: " + plaintext.equals(decrypted));
+
+            // 5. Generate wrong key
+            String wrongKeyBase64 = helper.generateKeyBase64();
+            System.out.println("\nWrong Key (Base64): " + wrongKeyBase64);
+
+            // 6. Decrypt failure
+            try {
+                String decryptedWrong = helper.decrypt(encrypted, wrongKeyBase64);
+                System.out.println("Decrypted with wrong key: " + decryptedWrong);
+            } catch (Exception ex) {
+                System.out.println("❌ Failed to decrypt with wrong key: " + ex.getMessage());
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
