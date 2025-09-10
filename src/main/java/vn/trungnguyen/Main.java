@@ -2,11 +2,11 @@ package vn.trungnguyen;
 
 import vn.trungnguyen.helper.AsymmetricHelper;
 import vn.trungnguyen.helper.SymmetricHelper;
+import vn.trungnguyen.helper.RandomHelper;
 
 import javax.crypto.SecretKey;
+import java.util.Arrays;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 public class Main {
     public static void main(String[] args) {
         System.out.println("🚀 SAMPLE SymmetricHelper");
@@ -34,7 +34,7 @@ public class Main {
             e.printStackTrace();
         }
 
-        System.out.println("🚀 SAMPLE AsymmetricHelper");
+        System.out.println("\n🚀 SAMPLE AsymmetricHelper");
         try {
             // Khởi tạo AsymmetricHelper
             AsymmetricHelper helper = new AsymmetricHelper();
@@ -78,6 +78,40 @@ public class Main {
 
         } catch (Exception e) {
             System.err.println("Lỗi xảy ra: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        System.out.println("\n🚀 SAMPLE RandomHelper");
+        try {
+            // 1. Random bytes
+            byte[] randomBytes = RandomHelper.nextBytes(16);
+            System.out.println("Random bytes (16): " + Arrays.toString(randomBytes));
+
+            // 2. Random int trong khoảng [0, bound)
+            int randomInt = RandomHelper.nextInt(100);
+            System.out.println("Random int [0,100): " + randomInt);
+
+            // 3. Random int trong khoảng [origin, bound)
+            int randomIntRange = RandomHelper.nextInt(50, 60);
+            System.out.println("Random int [50,60): " + randomIntRange);
+
+            // 4. Random long trong khoảng [0, bound)
+            long randomLong = RandomHelper.nextLong(1000L);
+            System.out.println("Random long [0,1000): " + randomLong);
+
+            // 5. Random long trong khoảng [origin, bound)
+            long randomLongRange = RandomHelper.nextLong(500L, 600L);
+            System.out.println("Random long [500,600): " + randomLongRange);
+
+            // 6. Random double [0.0,1.0)
+            double randomDouble = RandomHelper.nextDouble();
+            System.out.println("Random double [0,1): " + randomDouble);
+
+            // 7. Random double trong khoảng [origin, bound)
+            double randomDoubleRange = RandomHelper.nextDouble(5.5, 9.9);
+            System.out.println("Random double [5.5,9.9): " + randomDoubleRange);
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

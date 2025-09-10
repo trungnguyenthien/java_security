@@ -14,16 +14,41 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.security.Security;
 
 /**
- * SymmetricHelper - Lớp hỗ trợ mã hóa/giải mã đối xứng sử dụng AES-GCM-256 với Bouncy Castle
- * IV ngẫu nhiên 12 byte (96 bit)
+ * SymmetricHelper - Utility class for symmetric encryption/decryption using AES-GCM-256.
+ *
+ * <p>Features:</p>
+ * - AES-GCM with 256-bit key length (AES-256-GCM).
+ * - Random 12-byte (96-bit) IV for each encryption.
+ * - SecureRandom for cryptographic randomness.
+ * - Uses Bouncy Castle provider for strong cryptographic support.
+ *
+ * <p>Typical usage:</p>
+ * <pre>
+ * SymmetricHelper helper = new SymmetricHelper();
+ *
+ * // 1. Generate AES-256 key
+ * SecretKey key = helper.generateKey();
+ * String keyBase64 = helper.keyToBase64(key);
+ *
+ * // 2. Encrypt a message
+ * String plaintext = "Hello, this is a secret!";
+ * String encrypted = helper.encrypt(plaintext, key);
+ *
+ * // 3. Decrypt the message
+ * String decrypted = helper.decrypt(encrypted, key);
+ *
+ * System.out.println("Original : " + plaintext);
+ * System.out.println("Encrypted: " + encrypted);
+ * System.out.println("Decrypted: " + decrypted);
+ * </pre>
  */
 public class SymmetricHelper {
 
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
-    private static final int KEY_LENGTH = 256; // 256 bit
-    private static final int IV_LENGTH = 12;   // 96 bit
-    private static final int GCM_TAG_LENGTH = 16; // 128 bit
+    private static final int KEY_LENGTH = 256; // AES-256
+    private static final int IV_LENGTH = 12;   // 96-bit IV
+    private static final int GCM_TAG_LENGTH = 16; // 128-bit authentication tag
 
     private final SecureRandom secureRandom;
 
@@ -33,10 +58,11 @@ public class SymmetricHelper {
     }
 
     /**
-     * Tạo khóa AES-256 ngẫu nhiên sử dụng Bouncy Castle
-     * @return SecretKey - khóa AES-256
-     * @throws NoSuchAlgorithmException nếu thuật toán không được hỗ trợ
-     * @throws NoSuchProviderException nếu nhà cung cấp Bouncy Castle không được tìm thấy
+     * Generate a random AES-256 key using Bouncy Castle.
+     *
+     * @return SecretKey - A newly generated AES-256 key.
+     * @throws NoSuchAlgorithmException if AES is not supported.
+     * @throws NoSuchProviderException if Bouncy Castle provider is not available.
      */
     public SecretKey generateKey() throws NoSuchAlgorithmException, NoSuchProviderException {
         KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM, "BC");
@@ -45,17 +71,19 @@ public class SymmetricHelper {
     }
 
     /**
-     * Chuyển đổi byte array thành SecretKey
-     * @param keyBytes mảng byte của khóa (32 byte cho AES-256)
-     * @return SecretKey
+     * Convert raw byte array into a SecretKey.
+     *
+     * @param keyBytes 32-byte array representing an AES-256 key.
+     * @return SecretKey instance.
      */
     public SecretKey bytesToKey(byte[] keyBytes) {
         return new SecretKeySpec(keyBytes, ALGORITHM);
     }
 
     /**
-     * Tạo IV ngẫu nhiên 12 byte
-     * @return mảng byte IV 12 byte
+     * Generate a random 12-byte IV (96 bits).
+     *
+     * @return byte[] IV of length 12.
      */
     private byte[] generateIV() {
         byte[] iv = new byte[IV_LENGTH];
@@ -64,11 +92,12 @@ public class SymmetricHelper {
     }
 
     /**
-     * Mã hóa dữ liệu sử dụng AES-GCM-256 với Bouncy Castle
-     * @param plaintext dữ liệu cần mã hóa
-     * @param key khóa bí mật
-     * @return mảng byte chứa IV + dữ liệu đã mã hóa
-     * @throws Exception nếu có lỗi trong quá trình mã hóa
+     * Encrypt raw byte data using AES-GCM-256.
+     *
+     * @param plaintext Data to be encrypted.
+     * @param key AES SecretKey.
+     * @return byte[] containing IV + ciphertext.
+     * @throws Exception if encryption fails.
      */
     public byte[] encrypt(byte[] plaintext, SecretKey key) throws Exception {
         byte[] iv = generateIV();
@@ -76,6 +105,8 @@ public class SymmetricHelper {
         GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
         byte[] ciphertext = cipher.doFinal(plaintext);
+
+        // Prepend IV to ciphertext
         byte[] encryptedData = new byte[IV_LENGTH + ciphertext.length];
         System.arraycopy(iv, 0, encryptedData, 0, IV_LENGTH);
         System.arraycopy(ciphertext, 0, encryptedData, IV_LENGTH, ciphertext.length);
@@ -83,11 +114,12 @@ public class SymmetricHelper {
     }
 
     /**
-     * Mã hóa chuỗi văn bản
-     * @param plaintext chuỗi văn bản cần mã hóa
-     * @param key khóa bí mật
-     * @return chuỗi Base64 của dữ liệu đã mã hóa
-     * @throws Exception nếu có lỗi trong quá trình mã hóa
+     * Encrypt text and return Base64 encoded ciphertext.
+     *
+     * @param plaintext The string to encrypt.
+     * @param key AES SecretKey.
+     * @return Base64 encoded encrypted string.
+     * @throws Exception if encryption fails.
      */
     public String encrypt(String plaintext, SecretKey key) throws Exception {
         byte[] encrypted = encrypt(plaintext.getBytes("UTF-8"), key);
@@ -95,18 +127,21 @@ public class SymmetricHelper {
     }
 
     /**
-     * Giải mã dữ liệu đã được mã hóa bằng AES-GCM-256 với Bouncy Castle
-     * @param encryptedData dữ liệu đã mã hóa (IV + ciphertext)
-     * @param key khóa bí mật
-     * @return dữ liệu gốc sau khi giải mã
-     * @throws Exception nếu có lỗi trong quá trình giải mã
+     * Decrypt raw byte data previously encrypted with AES-GCM-256.
+     *
+     * @param encryptedData Data containing IV + ciphertext.
+     * @param key AES SecretKey.
+     * @return Decrypted raw bytes.
+     * @throws Exception if decryption fails.
      */
     public byte[] decrypt(byte[] encryptedData, SecretKey key) throws Exception {
         if (encryptedData.length < IV_LENGTH) {
-            throw new IllegalArgumentException("Dữ liệu mã hóa không hợp lệ");
+            throw new IllegalArgumentException("Invalid encrypted data format.");
         }
+
         byte[] iv = Arrays.copyOfRange(encryptedData, 0, IV_LENGTH);
         byte[] ciphertext = Arrays.copyOfRange(encryptedData, IV_LENGTH, encryptedData.length);
+
         Cipher cipher = Cipher.getInstance(TRANSFORMATION, "BC");
         GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
         cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
@@ -114,11 +149,12 @@ public class SymmetricHelper {
     }
 
     /**
-     * Giải mã chuỗi Base64
-     * @param encryptedText chuỗi Base64 của dữ liệu đã mã hóa
-     * @param key khóa bí mật
-     * @return chuỗi văn bản gốc
-     * @throws Exception nếu có lỗi trong quá trình giải mã
+     * Decrypt Base64 encoded encrypted text.
+     *
+     * @param encryptedText Base64 string containing IV + ciphertext.
+     * @param key AES SecretKey.
+     * @return The decrypted plaintext string.
+     * @throws Exception if decryption fails.
      */
     public String decrypt(String encryptedText, SecretKey key) throws Exception {
         byte[] encryptedData = Base64.getDecoder().decode(encryptedText);
@@ -127,50 +163,23 @@ public class SymmetricHelper {
     }
 
     /**
-     * Chuyển đổi khóa thành chuỗi Base64
-     * @param key khóa bí mật
-     * @return chuỗi Base64 của khóa
+     * Convert SecretKey to Base64 string.
+     *
+     * @param key AES SecretKey.
+     * @return Base64 encoded key.
      */
     public String keyToBase64(SecretKey key) {
         return Base64.getEncoder().encodeToString(key.getEncoded());
     }
 
     /**
-     * Chuyển đổi chuỗi Base64 thành khóa
-     * @param base64Key chuỗi Base64 của khóa
-     * @return SecretKey
+     * Convert Base64 encoded string back to SecretKey.
+     *
+     * @param base64Key Base64 encoded AES key.
+     * @return SecretKey instance.
      */
     public SecretKey base64ToKey(String base64Key) {
         byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         return bytesToKey(keyBytes);
     }
-
-    // /**
-    //  * Ví dụ sử dụng
-    //  */
-    // public static void main(String[] args) {
-    //     try {
-    //         SymmetricHelper helper = new SymmetricHelper();
-
-    //         // 1. Tạo khóa
-    //         SecretKey key = helper.generateKey();
-    //         System.out.println("Khóa (Base64): " + helper.keyToBase64(key));
-
-    //         // 2. Mã hóa
-    //         String plaintext = "Xin chào, đây là tin nhắn bí mật!";
-    //         String encrypted = helper.encrypt(plaintext, key);
-    //         System.out.println("Bản rõ: " + plaintext);
-    //         System.out.println("Đã mã hóa: " + encrypted);
-
-    //         // 3. Giải mã
-    //         String decrypted = helper.decrypt(encrypted, key);
-    //         System.out.println("Sau giải mã: " + decrypted);
-
-    //         // Kiểm tra
-    //         System.out.println("Khớp với bản gốc: " + plaintext.equals(decrypted));
-
-    //     } catch (Exception e) {
-    //         e.printStackTrace();
-    //     }
-    // }
 }
