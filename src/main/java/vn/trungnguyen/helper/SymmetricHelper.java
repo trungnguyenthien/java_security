@@ -2,7 +2,6 @@ package vn.trungnguyen.helper;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.NoSuchAlgorithmException;
@@ -14,36 +13,11 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import java.security.Security;
 
 /**
- * SymmetricHelper - Utility class for symmetric encryption/decryption using AES-GCM-256.
- *
- * <p>Features:</p>
- * - AES-GCM with 256-bit key length (AES-256-GCM).
- * - Random 12-byte (96-bit) IV for each encryption.
- * - SecureRandom for cryptographic randomness.
- * - Uses Bouncy Castle provider for strong cryptographic support.
- *
- * <p>Typical usage:</p>
- * <pre>
- * SymmetricHelper helper = new SymmetricHelper();
- *
- * // 1. Generate AES-256 key
- * SecretKey key = helper.generateKey();
- * String keyBase64 = helper.keyToBase64(key);
- *
- * // 2. Encrypt a message
- * String plaintext = "Hello, this is a secret!";
- * String encrypted = helper.encrypt(plaintext, key);
- *
- * // 3. Decrypt the message
- * String decrypted = helper.decrypt(encrypted, key);
- *
- * System.out.println("Original : " + plaintext);
- * System.out.println("Encrypted: " + encrypted);
- * System.out.println("Decrypted: " + decrypted);
- * </pre>
+ * SymmetricHelper - A helper class for symmetric encryption/decryption using AES-GCM-256 with Bouncy Castle
+ * Random 12-byte (96-bit) IV
  */
 public class SymmetricHelper {
-
+    private static final String PROVIDER = "BC"; // Bouncy Castle
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final int KEY_LENGTH = 256; // AES-256
@@ -58,55 +32,31 @@ public class SymmetricHelper {
     }
 
     /**
-     * Generate a random AES-256 key using Bouncy Castle.
-     *
-     * @return SecretKey - A newly generated AES-256 key.
-     * @throws NoSuchAlgorithmException if AES is not supported.
-     * @throws NoSuchProviderException if Bouncy Castle provider is not available.
+     * Generate a random AES-256 key as Base64 string.
      */
-    public SecretKey generateKey() throws NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM, "BC");
+    public String generateKey() throws NoSuchAlgorithmException, NoSuchProviderException {
+        KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM, PROVIDER);
         keyGenerator.init(KEY_LENGTH);
-        return keyGenerator.generateKey();
+        byte[] keyBytes = keyGenerator.generateKey().getEncoded();
+        return Base64.getEncoder().encodeToString(keyBytes);
     }
 
     /**
-     * Convert raw byte array into a SecretKey.
+     * Encrypt plaintext bytes using AES-GCM-256.
      *
-     * @param keyBytes 32-byte array representing an AES-256 key.
-     * @return SecretKey instance.
+     * @param plaintext data to encrypt
+     * @param base64Key AES key as Base64 string
+     * @return encrypted data (IV + ciphertext)
      */
-    public SecretKey bytesToKey(byte[] keyBytes) {
-        return new SecretKeySpec(keyBytes, ALGORITHM);
-    }
-
-    /**
-     * Generate a random 12-byte IV (96 bits).
-     *
-     * @return byte[] IV of length 12.
-     */
-    private byte[] generateIV() {
-        byte[] iv = new byte[IV_LENGTH];
-        secureRandom.nextBytes(iv);
-        return iv;
-    }
-
-    /**
-     * Encrypt raw byte data using AES-GCM-256.
-     *
-     * @param plaintext Data to be encrypted.
-     * @param key AES SecretKey.
-     * @return byte[] containing IV + ciphertext.
-     * @throws Exception if encryption fails.
-     */
-    public byte[] encrypt(byte[] plaintext, SecretKey key) throws Exception {
+    public byte[] encrypt(byte[] plaintext, String base64Key) throws Exception {
+        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         byte[] iv = generateIV();
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION, "BC");
+
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION, PROVIDER);
         GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(keyBytes, ALGORITHM), gcmParameterSpec);
         byte[] ciphertext = cipher.doFinal(plaintext);
 
-        // Prepend IV to ciphertext
         byte[] encryptedData = new byte[IV_LENGTH + ciphertext.length];
         System.arraycopy(iv, 0, encryptedData, 0, IV_LENGTH);
         System.arraycopy(ciphertext, 0, encryptedData, IV_LENGTH, ciphertext.length);
@@ -114,72 +64,46 @@ public class SymmetricHelper {
     }
 
     /**
-     * Encrypt text and return Base64 encoded ciphertext.
-     *
-     * @param plaintext The string to encrypt.
-     * @param key AES SecretKey.
-     * @return Base64 encoded encrypted string.
-     * @throws Exception if encryption fails.
+     * Encrypt plaintext string and return Base64 ciphertext.
      */
-    public String encrypt(String plaintext, SecretKey key) throws Exception {
-        byte[] encrypted = encrypt(plaintext.getBytes("UTF-8"), key);
+    public String encrypt(String plaintext, String base64Key) throws Exception {
+        byte[] encrypted = encrypt(plaintext.getBytes("UTF-8"), base64Key);
         return Base64.getEncoder().encodeToString(encrypted);
     }
 
     /**
-     * Decrypt raw byte data previously encrypted with AES-GCM-256.
-     *
-     * @param encryptedData Data containing IV + ciphertext.
-     * @param key AES SecretKey.
-     * @return Decrypted raw bytes.
-     * @throws Exception if decryption fails.
+     * Decrypt ciphertext bytes (IV + ciphertext) using AES-GCM-256.
      */
-    public byte[] decrypt(byte[] encryptedData, SecretKey key) throws Exception {
+    public byte[] decrypt(byte[] encryptedData, String base64Key) throws Exception {
         if (encryptedData.length < IV_LENGTH) {
             throw new IllegalArgumentException("Invalid encrypted data format.");
         }
 
+        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
         byte[] iv = Arrays.copyOfRange(encryptedData, 0, IV_LENGTH);
         byte[] ciphertext = Arrays.copyOfRange(encryptedData, IV_LENGTH, encryptedData.length);
 
         Cipher cipher = Cipher.getInstance(TRANSFORMATION, "BC");
         GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
-        cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
+        cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(keyBytes, ALGORITHM), gcmParameterSpec);
         return cipher.doFinal(ciphertext);
     }
 
     /**
-     * Decrypt Base64 encoded encrypted text.
-     *
-     * @param encryptedText Base64 string containing IV + ciphertext.
-     * @param key AES SecretKey.
-     * @return The decrypted plaintext string.
-     * @throws Exception if decryption fails.
+     * Decrypt Base64 ciphertext and return plaintext string.
      */
-    public String decrypt(String encryptedText, SecretKey key) throws Exception {
+    public String decrypt(String encryptedText, String base64Key) throws Exception {
         byte[] encryptedData = Base64.getDecoder().decode(encryptedText);
-        byte[] decrypted = decrypt(encryptedData, key);
+        byte[] decrypted = decrypt(encryptedData, base64Key);
         return new String(decrypted, "UTF-8");
     }
 
     /**
-     * Convert SecretKey to Base64 string.
-     *
-     * @param key AES SecretKey.
-     * @return Base64 encoded key.
+     * Generate a random IV.
      */
-    public String keyToBase64(SecretKey key) {
-        return Base64.getEncoder().encodeToString(key.getEncoded());
-    }
-
-    /**
-     * Convert Base64 encoded string back to SecretKey.
-     *
-     * @param base64Key Base64 encoded AES key.
-     * @return SecretKey instance.
-     */
-    public SecretKey base64ToKey(String base64Key) {
-        byte[] keyBytes = Base64.getDecoder().decode(base64Key);
-        return bytesToKey(keyBytes);
+    private byte[] generateIV() {
+        byte[] iv = new byte[IV_LENGTH];
+        secureRandom.nextBytes(iv);
+        return iv;
     }
 }

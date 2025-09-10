@@ -4,7 +4,6 @@ import vn.trungnguyen.helper.AsymmetricHelper;
 import vn.trungnguyen.helper.SymmetricHelper;
 import vn.trungnguyen.helper.RandomHelper;
 
-import javax.crypto.SecretKey;
 import java.util.Arrays;
 
 public class Main {
@@ -14,8 +13,8 @@ public class Main {
             SymmetricHelper helper = new SymmetricHelper();
 
             // 1. Tạo khóa
-            SecretKey key = helper.generateKey();
-            System.out.println("Khóa (Base64): " + helper.keyToBase64(key));
+            String key = helper.generateKey();
+            System.out.println("Khóa (Base64): " + key);
 
             // 2. Mã hóa
             String plaintext = "Xin chào, đây là tin nhắn bí mật!";
