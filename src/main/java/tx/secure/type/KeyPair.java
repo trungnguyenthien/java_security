@@ -15,24 +15,22 @@ public class KeyPair {
         this.privateKey = privateKey;
     }
 
-    /**
-     * @return the original private key object
-     */
+    // @return the original private key object
     public PrivateKey getPrivate() {
         return privateKey;
     }
 
-    /**
-     * @return the original public key object
-     */
+    // @return the original public key object
     public PublicKey getPublic() {
         return publicKey;
     }
 
+    // @return Base64-encoded private key
     public String getPrivateBase64() {
         return java.util.Base64.getEncoder().encodeToString(privateKey.getEncoded());
     }
-
+    
+    // @return Base64-encoded public key
     public String getPublicBase64() {
         return java.util.Base64.getEncoder().encodeToString(publicKey.getEncoded());
     }

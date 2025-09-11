@@ -30,22 +30,27 @@ public class Result {
         this(new JSONObject(json));
     }
 
+    // Algorithm
     public String getAlg() {
         return alg;
     }
 
+    // Initialization vector
     public String getIv() {
         return iv;
     }
 
+    // Ciphertext
     public String getCt() {
         return ct;
     }
 
+    // Authentication tag
     public String getTag() {
         return tag;
     }
 
+    // Ephemeral public key
     public String getEpub() {
         return epub;
     }
@@ -60,6 +65,7 @@ public class Result {
         return obj;
     }
 
+    // Sample output: {"alg":"AES-GCM-256","iv":"...","ct":"...","tag":"...","epub":"..."}
     public String toJsonString() {
         try {
             return toJson().toString();

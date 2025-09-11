@@ -11,6 +11,10 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
+/**
+ * Provides encryption and decryption utilities using ECDH for key agreement
+ * and AES for symmetric encryption.
+ */
 public class EncryptionHelperV1 implements EncryptionHelper {
     private final tx.secure.symmetric.EncryptionHelper symmetricHelper;
 
