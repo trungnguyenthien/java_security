@@ -1,4 +1,4 @@
-package vn.trungnguyen.helper;
+package tx.secure;
 
 import java.security.SecureRandom;
 
@@ -33,9 +33,14 @@ import java.security.SecureRandom;
  * double randDoubleInRange = RandomHelper.nextDouble(5.5, 10.0);
  * }</pre>
  */
-public class RandomHelper {
+public class RandomHelperImpl implements RandomHelper {
     /** Singleton instance of SecureRandom, seeded automatically by the OS */
-    private static final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom;
+
+    /** Creates a new instance of {@code RandomHelperImpl} with a secure random number generator. */
+    public RandomHelperImpl() {
+        this.secureRandom = new SecureRandom();
+    }
 
     /**
      * Generates a random byte array of the given length.
@@ -43,7 +48,8 @@ public class RandomHelper {
      * @param length the number of bytes to generate
      * @return a byte array filled with random values
      */
-    public static byte[] nextBytes(int length) {
+    @Override
+    public byte[] nextBytes(int length) {
         byte[] bytes = new byte[length];
         secureRandom.nextBytes(bytes);
         return bytes;
@@ -55,8 +61,21 @@ public class RandomHelper {
      * @param bound the upper bound (exclusive). Must be positive.
      * @return a random integer between 0 and bound - 1
      */
-    public static int nextInt(int bound) {
+    @Override
+    public int nextInt(int bound) {
         return secureRandom.nextInt(bound);
+    }
+
+    /**
+     * Generates a random integer between {@code origin} (inclusive) and {@code bound} (exclusive).
+     *
+     * @param origin the lower bound (inclusive)
+     * @param bound the upper bound (exclusive). Must be greater than origin.
+     * @return a random integer between origin and bound - 1
+     */
+    @Override
+    public int nextInt(int origin, int bound) {
+        return secureRandom.nextInt(origin, bound);
     }
 
     /**
@@ -65,7 +84,8 @@ public class RandomHelper {
      * @param bound the upper bound (exclusive). Must be positive.
      * @return a random long between 0 and bound - 1
      */
-    public static long nextLong(long bound) {
+    @Override
+    public long nextLong(long bound) {
         return secureRandom.nextLong(bound);
     }
 
@@ -76,19 +96,9 @@ public class RandomHelper {
      * @param bound the upper bound (exclusive). Must be greater than origin.
      * @return a random long between origin and bound - 1
      */
-    public static long nextLong(long origin, long bound) {
+    @Override
+    public long nextLong(long origin, long bound) {
         return secureRandom.nextLong(origin, bound);
-    }
-
-    /**
-     * Generates a random integer between {@code origin} (inclusive) and {@code bound} (exclusive).
-     *
-     * @param origin the lower bound (inclusive)
-     * @param bound the upper bound (exclusive). Must be greater than origin.
-     * @return a random integer between origin and bound - 1
-     */
-    public static int nextInt(int origin, int bound) {
-        return secureRandom.nextInt(origin, bound);
     }
 
     /**
@@ -96,7 +106,8 @@ public class RandomHelper {
      *
      * @return a random double between 0.0 and 1.0
      */
-    public static double nextDouble() {
+    @Override
+    public double nextDouble() {
         return secureRandom.nextDouble();
     }
 
@@ -107,7 +118,8 @@ public class RandomHelper {
      * @param bound the upper bound (exclusive). Must be greater than origin.
      * @return a random double between origin and bound
      */
-    public static double nextDouble(double origin, double bound) {
+    @Override
+    public double nextDouble(double origin, double bound) {
         return secureRandom.nextDouble(origin, bound);
     }
 }

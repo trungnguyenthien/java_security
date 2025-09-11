@@ -1,8 +1,13 @@
 package vn.trungnguyen;
 
-import vn.trungnguyen.helper.AsymmetricHelper;
-import vn.trungnguyen.helper.SymmetricHelper;
-import vn.trungnguyen.helper.RandomHelper;
+import tx.secure.asymmetric.AsymmetricEncryptionHelper;
+import tx.secure.asymmetric.AsymmetricEncryptionResult;
+import tx.secure.asymmetric.AsymmetricKeyPair;
+import tx.secure.asymmetric.AsymmetricSignatureHelper;
+import tx.secure.symmetric.SymmetricEncryptionHelper;
+import tx.secure.symmetric.SymmetricEncryptionHelperImpl;
+import tx.secure.RandomHelper;
+import tx.secure.RandomHelperImpl;
 
 import java.util.Arrays;
 
@@ -10,7 +15,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("🚀 SAMPLE SymmetricHelper");
         try {
-            SymmetricHelper helper = new SymmetricHelper();
+            SymmetricEncryptionHelper helper = new SymmetricEncryptionHelperImpl();
 
             // 1. Generate a valid AES-256 key
             String keyBase64 = helper.generateKeyBase64();
@@ -21,7 +26,7 @@ public class Main {
             System.out.println("Plaintext: " + plaintext);
 
             // 3. Encrypt
-            SymmetricHelper.EncryptResult encrypted = helper.encrypt(plaintext, keyBase64);
+            tx.secure.symmetric.SymmetricEncryptionResult encrypted = helper.encrypt(plaintext, keyBase64);
             System.out.println("Encrypted JSON: " + encrypted.toJson());
 
             // 4. Decrypt successfully
@@ -42,88 +47,84 @@ public class Main {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error in SymmetricHelper demo: " + e.getMessage());
         }
 
-        System.out.println("\n🚀 SAMPLE AsymmetricHelper");
+        System.out.println("\n🚀 SAMPLE AsymmetricHelper with Hybrid Encryption");
         try {
-            // Khởi tạo AsymmetricHelper
-            AsymmetricHelper helper = new AsymmetricHelper();
-            AsymmetricHelper.Encryption encryption = new AsymmetricHelper.Encryption();
-            AsymmetricHelper.Signature signature = new AsymmetricHelper.Signature();
+            // Create SymmetricEncryptionHelper instance (required dependency)
+            SymmetricEncryptionHelper symmetricHelper = new SymmetricEncryptionHelperImpl();
 
-            // 1. Tạo cặp khóa cho mã hóa (ECDH)
-            AsymmetricHelper.KeyPair encryptionKeyPair = encryption.generateKeyPair();
+            // Create AsymmetricEncryptionHelper with SymmetricEncryptionHelper dependency
+            AsymmetricEncryptionHelper encryption = new AsymmetricEncryptionHelper(symmetricHelper);
 
-            // 2. Tạo cặp khóa cho chữ ký (Ed25519)
-            AsymmetricHelper.KeyPair signatureKeyPair = signature.generateKeyPair();
+            // 1. Generate RSA key pair for encryption
+            AsymmetricKeyPair encryptionKeyPair = encryption.generateKeyPair();
+            System.out.println("RSA key pair generated successfully!");
 
-            // 3. Dữ liệu mẫu
-            String originalData = "Xin chào, đây là dữ liệu bí mật cần mã hóa và ký!";
+            // 2. Test data
+            String originalData = "Xin chào, đây là d�� liệu bí mật cần mã hóa bằng hybrid encryption!";
             System.out.println("Dữ liệu gốc: " + originalData);
 
-            // 4. Mã hóa dữ liệu
-            AsymmetricHelper.EncryptedResult encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublicBase64());
-            String encryptedData = encryptedResult.getEncryptedData();
-            String ephemeralPublicKey = encryptedResult.getEphemeralPublicKey();
-            System.out.println("Dữ liệu mã hóa (Base64): " + encryptedData);
-            System.out.println("Khóa công khai tạm thời (Base64): " + ephemeralPublicKey);
+            // 3. Encrypt data using hybrid encryption
+            AsymmetricEncryptionResult encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublic());
+            System.out.println("Dữ liệu đã được mã hóa thành công!");
+            System.out.println("Encrypted symmetric key: " + encryptedResult.getEncryptedSymmetricKey());
+            System.out.println("Symmetric algorithm: " + encryptedResult.getSymmetricResult().getAlg());
 
-            // 5. Giải mã dữ liệu
-            String decryptedData = encryption.decrypt(encryptedData, encryptionKeyPair.getPrivateBase64(), ephemeralPublicKey);
+            // 4. Decrypt data using hybrid decryption
+            String decryptedData = encryption.decrypt(encryptedResult, encryptionKeyPair.getPrivate());
             System.out.println("Dữ liệu giải mã: " + decryptedData);
             System.out.println("Khớp với bản gốc: " + originalData.equals(decryptedData));
 
-            // 6. Ký dữ liệu
-            String signedData = signature.sign(originalData, signatureKeyPair.getPrivateBase64());
-            System.out.println("Chữ ký (Base64): " + signedData);
-
-            // 7. Xác minh chữ ký
-            boolean isVerified = signature.verify(originalData, signedData, signatureKeyPair.getPublicBase64());
-            System.out.println("Chữ ký hợp lệ: " + isVerified);
-
-            // 8. Kiểm tra xác minh với dữ liệu sai
-            String wrongData = "Dữ liệu sai lệch!";
-            boolean isVerifiedWrong = signature.verify(wrongData, signedData, signatureKeyPair.getPublicBase64());
-            System.out.println("Xác minh với dữ liệu sai: " + isVerifiedWrong);
-
         } catch (Exception e) {
-            System.err.println("Lỗi xảy ra: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("Lỗi trong AsymmetricHelper demo: " + e.getMessage());
         }
 
         System.out.println("\n🚀 SAMPLE RandomHelper");
         try {
+            RandomHelper randomHelper = new RandomHelperImpl();
             // 1. Random bytes
-            byte[] randomBytes = RandomHelper.nextBytes(16);
+            byte[] randomBytes = randomHelper.nextBytes(16);
             System.out.println("Random bytes (16): " + Arrays.toString(randomBytes));
 
             // 2. Random int trong khoảng [0, bound)
-            int randomInt = RandomHelper.nextInt(100);
+            int randomInt = randomHelper.nextInt(100);
             System.out.println("Random int [0,100): " + randomInt);
 
             // 3. Random int trong khoảng [origin, bound)
-            int randomIntRange = RandomHelper.nextInt(50, 60);
+            int randomIntRange = randomHelper.nextInt(50, 60);
             System.out.println("Random int [50,60): " + randomIntRange);
 
             // 4. Random long trong khoảng [0, bound)
-            long randomLong = RandomHelper.nextLong(1000L);
+            long randomLong = randomHelper.nextLong(1000L);
             System.out.println("Random long [0,1000): " + randomLong);
 
             // 5. Random long trong khoảng [origin, bound)
-            long randomLongRange = RandomHelper.nextLong(500L, 600L);
+            long randomLongRange = randomHelper.nextLong(500L, 600L);
             System.out.println("Random long [500,600): " + randomLongRange);
 
             // 6. Random double [0.0,1.0)
-            double randomDouble = RandomHelper.nextDouble();
+            double randomDouble = randomHelper.nextDouble();
             System.out.println("Random double [0,1): " + randomDouble);
 
             // 7. Random double trong khoảng [origin, bound)
-            double randomDoubleRange = RandomHelper.nextDouble(5.5, 9.9);
+            double randomDoubleRange = randomHelper.nextDouble(5.5, 9.9);
             System.out.println("Random double [5.5,9.9): " + randomDoubleRange);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Error in RandomHelper demo: " + e.getMessage());
         }
+
+        System.out.println("\n🚀 SUMMARY: Hybrid Encryption Architecture");
+        System.out.println("✅ AsymmetricEncryptionHelper now uses dependency injection");
+        System.out.println("   - Requires SymmetricEncryptionHelper for actual encryption/decryption");
+        System.out.println("   - Focuses only on RSA key generation and key management");
+        System.out.println("   - Implements secure hybrid encryption pattern");
+        System.out.println("✅ SymmetricEncryptionHelper handles AES-GCM encryption");
+        System.out.println("   - Fast and secure for large data");
+        System.out.println("   - Used internally by AsymmetricEncryptionHelper");
+        System.out.println("✅ RSA is used only for encrypting symmetric keys");
+        System.out.println("   - Efficient and secure hybrid approach");
     }
 }
