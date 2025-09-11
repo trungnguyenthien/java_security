@@ -3,7 +3,6 @@ package vn.trungnguyen;
 import tx.secure.asymmetric.AsymmetricEncryptionHelper;
 import tx.secure.asymmetric.AsymmetricEncryptionResult;
 import tx.secure.asymmetric.AsymmetricKeyPair;
-import tx.secure.asymmetric.AsymmetricSignatureHelper;
 import tx.secure.symmetric.SymmetricEncryptionHelper;
 import tx.secure.symmetric.SymmetricEncryptionHelperImpl;
 import tx.secure.RandomHelper;
@@ -50,7 +49,7 @@ public class Main {
             System.err.println("Error in SymmetricHelper demo: " + e.getMessage());
         }
 
-        System.out.println("\n🚀 SAMPLE AsymmetricHelper with Hybrid Encryption");
+        System.out.println("\n🚀 SAMPLE AsymmetricHelper with Hybrid Encryption (ECDH secp256r1)");
         try {
             // Create SymmetricEncryptionHelper instance (required dependency)
             SymmetricEncryptionHelper symmetricHelper = new SymmetricEncryptionHelperImpl();
@@ -58,22 +57,22 @@ public class Main {
             // Create AsymmetricEncryptionHelper with SymmetricEncryptionHelper dependency
             AsymmetricEncryptionHelper encryption = new AsymmetricEncryptionHelper(symmetricHelper);
 
-            // 1. Generate RSA key pair for encryption
+            // 1. Generate secp256r1 ECDH key pair for encryption
             AsymmetricKeyPair encryptionKeyPair = encryption.generateKeyPair();
-            System.out.println("RSA key pair generated successfully!");
+            System.out.println("secp256r1 ECDH key pair generated successfully!");
 
             // 2. Test data
-            String originalData = "Xin chào, đây là d�� liệu bí mật cần mã hóa bằng hybrid encryption!";
+            String originalData = "Xin chào, đây là dữ liệu bí mật cần mã hóa bằng ECDH hybrid encryption!";
             System.out.println("Dữ liệu gốc: " + originalData);
 
-            // 3. Encrypt data using hybrid encryption
-            AsymmetricEncryptionResult encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublic());
+            // 3. Encrypt data using ECDH hybrid encryption
+            AsymmetricEncryptionResult encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublicBase64());
             System.out.println("Dữ liệu đã được mã hóa thành công!");
-            System.out.println("Encrypted symmetric key: " + encryptedResult.getEncryptedSymmetricKey());
-            System.out.println("Symmetric algorithm: " + encryptedResult.getSymmetricResult().getAlg());
+            System.out.println("Ephemeral public key: " + encryptedResult.encryptedSymmetricKey());
+            System.out.println("Symmetric algorithm: " + encryptedResult.symmetricResult().getAlg());
 
-            // 4. Decrypt data using hybrid decryption
-            String decryptedData = encryption.decrypt(encryptedResult, encryptionKeyPair.getPrivate());
+            // 4. Decrypt data using ECDH hybrid decryption
+            String decryptedData = encryption.decrypt(encryptedResult.getEncryptionJson(), encryptedResult.encryptedSymmetricKey(), encryptionKeyPair.getPrivateBase64());
             System.out.println("Dữ liệu giải mã: " + decryptedData);
             System.out.println("Khớp với bản gốc: " + originalData.equals(decryptedData));
 

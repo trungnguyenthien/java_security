@@ -1,66 +1,66 @@
 package tx.secure.asymmetric;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.jce.spec.ECNamedCurveGenParameterSpec;
 import tx.secure.symmetric.SymmetricEncryptionHelper;
 import tx.secure.symmetric.SymmetricEncryptionResult;
 
-import javax.crypto.Cipher;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.PrivateKey;
-import java.security.PublicKey;
+import javax.crypto.KeyAgreement;
+import java.security.*;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class AsymmetricEncryptionHelper {
     private final SymmetricEncryptionHelper symmetricHelper;
 
+    static {
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
+
     public AsymmetricEncryptionHelper(SymmetricEncryptionHelper symmetricHelper) {
         this.symmetricHelper = symmetricHelper;
     }
 
-    /**
-     * Generate a new RSA key pair
-     */
     public AsymmetricKeyPair generateKeyPair() throws Exception {
-        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-        keyPairGenerator.initialize(2048);
-        KeyPair keyPair = keyPairGenerator.generateKeyPair();
-
-        return new AsymmetricKeyPair(keyPair.getPublic(), keyPair.getPrivate());
+        KeyPairGenerator gen = KeyPairGenerator.getInstance("ECDH", "BC");
+        gen.initialize(new ECNamedCurveGenParameterSpec("secp256r1"));
+        KeyPair kp = gen.generateKeyPair();
+        return new AsymmetricKeyPair(kp.getPublic(), kp.getPrivate());
     }
 
-    /**
-     * Encrypt plaintext using hybrid encryption:
-     * 1. Generate a symmetric key
-     * 2. Encrypt the plaintext with the symmetric key
-     * 3. Encrypt the symmetric key with the RSA public key
-     */
-    public AsymmetricEncryptionResult encrypt(String plaintext, PublicKey publicKey) throws Exception {
-        // Generate symmetric key and encrypt the plaintext
-        String symmetricKey = symmetricHelper.generateKeyBase64();
-        SymmetricEncryptionResult symmetricResult = symmetricHelper.encrypt(plaintext, symmetricKey);
+    public AsymmetricEncryptionResult encrypt(String plaintext, String base64PublicKey) throws Exception {
+        PublicKey recipientPublicKey = KeyFactory.getInstance("ECDH", "BC")
+                .generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(base64PublicKey)));
 
-        // Encrypt the symmetric key with RSA public key
-        Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
-        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-        byte[] encryptedKeyBytes = cipher.doFinal(Base64.getDecoder().decode(symmetricKey));
-        String encryptedSymmetricKey = Base64.getEncoder().encodeToString(encryptedKeyBytes);
+        AsymmetricKeyPair ephemeral = generateKeyPair();
+        String aesKey = deriveKey(ephemeral.getPrivate(), recipientPublicKey);
+        SymmetricEncryptionResult encrypted = symmetricHelper.encrypt(plaintext, aesKey);
+        String ephemeralPubKey = Base64.getEncoder().encodeToString(ephemeral.getPublic().getEncoded());
 
-        return new AsymmetricEncryptionResult(encryptedSymmetricKey, symmetricResult);
+        return new AsymmetricEncryptionResult(ephemeralPubKey, encrypted);
     }
 
-    /**
-     * Decrypt the encrypted result using hybrid decryption:
-     * 1. Decrypt the symmetric key using the RSA private key
-     * 2. Use the decrypted symmetric key to decrypt the actual data
-     */
-    public String decrypt(AsymmetricEncryptionResult result, PrivateKey privateKey) throws Exception {
-        // Decrypt the symmetric key with RSA private key
-        Cipher cipher = Cipher.getInstance("RSA/ECB/OAEPWITHSHA-256ANDMGF1PADDING");
-        cipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] decryptedKeyBytes = cipher.doFinal(Base64.getDecoder().decode(result.getEncryptedSymmetricKey()));
-        String symmetricKey = Base64.getEncoder().encodeToString(decryptedKeyBytes);
+    public String decrypt(String encryptedJson, String base64PublicKey, String base64PrivateKey) throws Exception {
+        PrivateKey privKey = KeyFactory.getInstance("ECDH", "BC")
+                .generatePrivate(new PKCS8EncodedKeySpec(Base64.getDecoder().decode(base64PrivateKey)));
 
-        // Decrypt the actual data using the symmetric key
-        return symmetricHelper.decrypt(result.getSymmetricResult(), symmetricKey);
+        PublicKey ephemeralPubKey = KeyFactory.getInstance("ECDH", "BC")
+                .generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(base64PublicKey)));
+
+        String aesKey = deriveKey(privKey, ephemeralPubKey);
+        return symmetricHelper.decrypt(new SymmetricEncryptionResult(encryptedJson), aesKey);
+    }
+
+    private String deriveKey(PrivateKey privateKey, PublicKey publicKey) throws Exception {
+        KeyAgreement ka = KeyAgreement.getInstance("ECDH", "BC");
+        ka.init(privateKey);
+        ka.doPhase(publicKey, true);
+
+        byte[] shared = ka.generateSecret();
+        byte[] hash = MessageDigest.getInstance("SHA-256", "BC").digest(shared);
+        return Base64.getEncoder().encodeToString(hash);
     }
 }

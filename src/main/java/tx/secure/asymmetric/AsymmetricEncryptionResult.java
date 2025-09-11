@@ -1,31 +1,32 @@
 package tx.secure.asymmetric;
 
+import org.json.JSONException;
 import tx.secure.symmetric.SymmetricEncryptionResult;
 
 /**
  * Holds encrypted data (Base64-encoded) along with the ephemeral public key (Base64-encoded)
  * generated during encryption.
  */
-public class AsymmetricEncryptionResult {
-    private final String encryptedSymmetricKey;
-    private final SymmetricEncryptionResult symmetricResult;
-
-    public AsymmetricEncryptionResult(String encryptedSymmetricKey, SymmetricEncryptionResult symmetricResult) {
-        this.encryptedSymmetricKey = encryptedSymmetricKey;
-        this.symmetricResult = symmetricResult;
-    }
+public record AsymmetricEncryptionResult(String encryptedSymmetricKey, SymmetricEncryptionResult symmetricResult) {
 
     /**
      * @return Base64-encoded encrypted data
      */
-    public String getEncryptedSymmetricKey() {
+    @Override
+    public String encryptedSymmetricKey() {
         return encryptedSymmetricKey;
     }
 
     /**
      * @return Symmetric encryption result object
      */
-    public SymmetricEncryptionResult getSymmetricResult() {
+    @Override
+    public SymmetricEncryptionResult symmetricResult() {
         return symmetricResult;
+    }
+
+    public String getEncryptionJson() throws JSONException {
+        System.out.println("symmetricResult.toJson().toString() = " + symmetricResult.toJson().toString());
+        return symmetricResult.toJson().toString();
     }
 }

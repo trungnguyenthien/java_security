@@ -1,15 +1,19 @@
 package tx.secure.symmetric;
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.Security;
 import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * SymmetricHelper - Utility for AES-256-GCM encryption/decryption.
+ * SymmetricHelper - Utility for AES-256-GCM encryption/decryption using BouncyCastleProvider.
  *
  * <p>The encrypted output is a JSON string containing:</p>
  * <pre>
@@ -26,13 +30,21 @@ import java.util.Base64;
 public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper {
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final String PROVIDER = "BC"; // Bouncy Castle
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 16;
+
+    public SymmetricEncryptionHelperImpl() {
+        // Add BouncyCastle provider if not already added
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
+    }
 
     /** Generate a random AES-256 key, returned as Base64 string */
     @Override
     public String generateKeyBase64() throws Exception {
-        KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM);
+        KeyGenerator keyGenerator = KeyGenerator.getInstance(ALGORITHM, PROVIDER);
         keyGenerator.init(256);
         SecretKey secretKey = keyGenerator.generateKey();
         return Base64.getEncoder().encodeToString(secretKey.getEncoded());
@@ -48,11 +60,11 @@ public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper 
         byte[] iv = new byte[GCM_IV_LENGTH];
         new SecureRandom().nextBytes(iv);
 
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION, PROVIDER);
         GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, gcmSpec);
 
-        byte[] encryptedBytes = cipher.doFinal(plaintext.getBytes("UTF-8"));
+        byte[] encryptedBytes = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
 
         // Split encrypted data and tag
         byte[] cipherText = new byte[encryptedBytes.length - GCM_TAG_LENGTH];
@@ -83,11 +95,11 @@ public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper 
         System.arraycopy(cipherText, 0, encryptedWithTag, 0, cipherText.length);
         System.arraycopy(tag, 0, encryptedWithTag, cipherText.length, tag.length);
 
-        Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+        Cipher cipher = Cipher.getInstance(TRANSFORMATION, PROVIDER);
         GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
         cipher.init(Cipher.DECRYPT_MODE, secretKey, gcmSpec);
 
         byte[] decryptedBytes = cipher.doFinal(encryptedWithTag);
-        return new String(decryptedBytes, "UTF-8");
+        return new String(decryptedBytes, StandardCharsets.UTF_8);
     }
 }
