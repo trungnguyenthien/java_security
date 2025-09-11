@@ -1,6 +1,7 @@
 package tx.secure.symmetric;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import tx.secure.type.Result;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
@@ -11,30 +12,18 @@ import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.security.SecureRandom;
 import java.util.Base64;
-
 /**
- * SymmetricHelper - Utility for AES-256-GCM encryption/decryption using BouncyCastleProvider.
- *
- * <p>The encrypted output is a JSON string containing:</p>
- * <pre>
- * {
- *   "alg": "AES-GCM-256",
- *   "iv":  "Base64IV",
- *   "ct":  "Base64Ciphertext",
- *   "tag": "Base64Tag"
- * }
- * </pre>
- *
- * <p>Public API only uses Base64 string for keys, never exposes javax.crypto.SecretKey.</p>
+ * SymmetricEncryptionHelperImpl - Implementation of SymmetricEncryptionHelper using AES-GCM-256 with Bouncy Castle
+ * Random 12-byte (96-bit) IV
  */
-public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper {
+public class EncryptionHelperV1 implements EncryptionHelper {
     private static final String ALGORITHM = "AES";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final String PROVIDER = "BC"; // Bouncy Castle
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 16;
 
-    public SymmetricEncryptionHelperImpl() {
+    public EncryptionHelperV1() {
         // Add BouncyCastle provider if not already added
         if (Security.getProvider("BC") == null) {
             Security.addProvider(new BouncyCastleProvider());
@@ -52,7 +41,7 @@ public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper 
 
     /** Encrypt plaintext string -> EncryptResult */
     @Override
-    public SymmetricEncryptionResult encrypt(String plaintext, String keyBase64) throws Exception {
+    public Result encrypt(String plaintext, String keyBase64) throws Exception {
         byte[] keyBytes = Base64.getDecoder().decode(keyBase64);
         SecretKey secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
 
@@ -72,17 +61,18 @@ public class SymmetricEncryptionHelperImpl implements SymmetricEncryptionHelper 
         System.arraycopy(encryptedBytes, 0, cipherText, 0, cipherText.length);
         System.arraycopy(encryptedBytes, cipherText.length, tag, 0, tag.length);
 
-        return new SymmetricEncryptionResult(
+        return new Result(
             "AES-GCM",
             Base64.getEncoder().encodeToString(iv),
             Base64.getEncoder().encodeToString(cipherText),
-            Base64.getEncoder().encodeToString(tag)
+            Base64.getEncoder().encodeToString(tag),
+                null
         );
     }
 
     /** Decrypt EncryptResult -> plaintext string */
     @Override
-    public String decrypt(SymmetricEncryptionResult result, String keyBase64) throws Exception {
+    public String decrypt(Result result, String keyBase64) throws Exception {
         byte[] keyBytes = Base64.getDecoder().decode(keyBase64);
         SecretKey secretKey = new SecretKeySpec(keyBytes, ALGORITHM);
 

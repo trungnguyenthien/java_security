@@ -1,4 +1,4 @@
-package tx.secure.asymmetric;
+package tx.secure.type;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -6,11 +6,11 @@ import java.security.PublicKey;
 /**
  * Wrapper class for holding a key pair.
  */
-public class AsymmetricKeyPair {
+public class KeyPair {
     private final PublicKey publicKey;
     private final PrivateKey privateKey;
 
-    public AsymmetricKeyPair(PublicKey publicKey, PrivateKey privateKey) {
+    public KeyPair(PublicKey publicKey, PrivateKey privateKey) {
         this.publicKey = publicKey;
         this.privateKey = privateKey;
     }

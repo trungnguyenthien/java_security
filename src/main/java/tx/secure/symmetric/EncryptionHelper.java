@@ -1,6 +1,8 @@
 package tx.secure.symmetric;
 
-public interface SymmetricEncryptionHelper {
+import tx.secure.type.Result;
+
+public interface EncryptionHelper {
     /**
      * Generate a random symmetric key and return it as Base64 encoded string
      */
@@ -9,10 +11,10 @@ public interface SymmetricEncryptionHelper {
     /**
      * Encrypt plaintext using the provided symmetric key
      */
-    SymmetricEncryptionResult encrypt(String plaintext, String keyBase64) throws Exception;
+    Result encrypt(String plaintext, String keyBase64) throws Exception;
 
     /**
      * Decrypt the encrypted result using the provided symmetric key
      */
-    String decrypt(SymmetricEncryptionResult result, String keyBase64) throws Exception;
+    String decrypt(Result result, String keyBase64) throws Exception;
 }

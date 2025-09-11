@@ -1,10 +1,10 @@
 package vn.trungnguyen;
 
-import tx.secure.asymmetric.AsymmetricEncryptionHelper;
-import tx.secure.asymmetric.AsymmetricEncryptionResult;
-import tx.secure.asymmetric.AsymmetricKeyPair;
-import tx.secure.symmetric.SymmetricEncryptionHelper;
-import tx.secure.symmetric.SymmetricEncryptionHelperImpl;
+//import tx.secure.asymmetric.AsymmetricEncryptionResult;
+import tx.secure.type.KeyPair;
+import tx.secure.type.Result;
+import tx.secure.symmetric.EncryptionHelper;
+import tx.secure.symmetric.EncryptionHelperV1;
 import tx.secure.RandomHelper;
 import tx.secure.RandomHelperImpl;
 
@@ -14,7 +14,7 @@ public class Main {
     public static void main(String[] args) {
         System.out.println("🚀 SAMPLE SymmetricHelper");
         try {
-            SymmetricEncryptionHelper helper = new SymmetricEncryptionHelperImpl();
+            EncryptionHelper helper = new EncryptionHelperV1();
 
             // 1. Generate a valid AES-256 key
             String keyBase64 = helper.generateKeyBase64();
@@ -25,7 +25,7 @@ public class Main {
             System.out.println("Plaintext: " + plaintext);
 
             // 3. Encrypt
-            tx.secure.symmetric.SymmetricEncryptionResult encrypted = helper.encrypt(plaintext, keyBase64);
+            Result encrypted = helper.encrypt(plaintext, keyBase64);
             System.out.println("Encrypted JSON: " + encrypted.toJson());
 
             // 4. Decrypt successfully
@@ -52,13 +52,13 @@ public class Main {
         System.out.println("\n🚀 SAMPLE AsymmetricHelper with Hybrid Encryption (ECDH secp256r1)");
         try {
             // Create SymmetricEncryptionHelper instance (required dependency)
-            SymmetricEncryptionHelper symmetricHelper = new SymmetricEncryptionHelperImpl();
+            EncryptionHelper symmetricHelper = new EncryptionHelperV1();
 
             // Create AsymmetricEncryptionHelper with SymmetricEncryptionHelper dependency
-            AsymmetricEncryptionHelper encryption = new AsymmetricEncryptionHelper(symmetricHelper);
+            tx.secure.asymmetric.EncryptionHelper encryption = new tx.secure.asymmetric.EncryptionHelperV1(symmetricHelper);
 
             // 1. Generate secp256r1 ECDH key pair for encryption
-            AsymmetricKeyPair encryptionKeyPair = encryption.generateKeyPair();
+            KeyPair encryptionKeyPair = encryption.generateKeyPair();
             System.out.println("secp256r1 ECDH key pair generated successfully!");
 
             // 2. Test data
@@ -66,13 +66,14 @@ public class Main {
             System.out.println("Dữ liệu gốc: " + originalData);
 
             // 3. Encrypt data using ECDH hybrid encryption
-            AsymmetricEncryptionResult encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublicBase64());
+            Result encryptedResult = encryption.encrypt(originalData, encryptionKeyPair.getPublicBase64());
             System.out.println("Dữ liệu đã được mã hóa thành công!");
-            System.out.println("Ephemeral public key: " + encryptedResult.encryptedSymmetricKey());
-            System.out.println("Symmetric algorithm: " + encryptedResult.symmetricResult().getAlg());
+            System.out.println("encryptedResult = " + encryptedResult.toJsonString());
+            System.out.println("Ephemeral public key: " + encryptedResult.getEpub());
+            System.out.println("Symmetric algorithm: " + encryptedResult.getAlg());
 
             // 4. Decrypt data using ECDH hybrid decryption
-            String decryptedData = encryption.decrypt(encryptedResult.getEncryptionJson(), encryptedResult.encryptedSymmetricKey(), encryptionKeyPair.getPrivateBase64());
+            String decryptedData = encryption.decrypt(encryptedResult.toJson().toString(), encryptedResult.getEpub(), encryptionKeyPair.getPrivateBase64());
             System.out.println("Dữ liệu giải mã: " + decryptedData);
             System.out.println("Khớp với bản gốc: " + originalData.equals(decryptedData));
 

@@ -1,6 +1,7 @@
 package tx.secure.asymmetric;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import tx.secure.type.KeyPair;
 
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -10,9 +11,9 @@ import java.util.Base64;
 /**
  * Provides digital signature utilities using Ed25519 algorithm.
  */
-public class AsymmetricSignatureHelper {
+public class SignatureHelperV1 implements SignatureHelper {
     private final String PROVIDER = "BC"; // Bouncy Castle
-    public AsymmetricSignatureHelper() {
+    public SignatureHelperV1() {
         Security.addProvider(new BouncyCastleProvider());
     }
     private final String ALGORITHM = "Ed25519";
@@ -22,10 +23,11 @@ public class AsymmetricSignatureHelper {
      *
      * @return KeyPair containing both key objects and Base64 strings
      */
-    public AsymmetricKeyPair generateKeyPair() throws Exception {
+    @Override
+    public KeyPair generateKeyPair() throws Exception {
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(ALGORITHM, PROVIDER);
-        KeyPair pair = keyPairGenerator.generateKeyPair();
-        return new AsymmetricKeyPair(pair.getPublic(), pair.getPrivate());
+        java.security.KeyPair pair = keyPairGenerator.generateKeyPair();
+        return new KeyPair(pair.getPublic(), pair.getPrivate());
     }
 
     /**
@@ -35,6 +37,7 @@ public class AsymmetricSignatureHelper {
      * @param privateKey Base64-encoded private key
      * @return Base64-encoded signature
      */
+    @Override
     public String sign(String data, String privateKey) throws Exception {
         return sign(data.getBytes(), privateKey);
     }
@@ -46,6 +49,7 @@ public class AsymmetricSignatureHelper {
      * @param privateKey Base64-encoded private key
      * @return Base64-encoded signature
      */
+    @Override
     public String sign(byte[] data, String privateKey) throws Exception {
         PrivateKey privKey = decodePrivateKey(privateKey);
         java.security.Signature signature = java.security.Signature.getInstance(ALGORITHM, PROVIDER);
@@ -63,6 +67,7 @@ public class AsymmetricSignatureHelper {
      * @param publicKey Base64-encoded public key
      * @return true if valid, false otherwise
      */
+    @Override
     public boolean verify(String data, String signature, String publicKey) throws Exception {
         return verify(data.getBytes(), signature, publicKey);
     }
@@ -75,6 +80,7 @@ public class AsymmetricSignatureHelper {
      * @param publicKey Base64-encoded public key
      * @return true if valid, false otherwise
      */
+    @Override
     public boolean verify(byte[] data, String signature, String publicKey) throws Exception {
         PublicKey pubKey = decodePublicKey(publicKey);
         java.security.Signature sig = java.security.Signature.getInstance(ALGORITHM, PROVIDER);

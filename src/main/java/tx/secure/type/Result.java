@@ -1,29 +1,32 @@
-package tx.secure.symmetric;
+package tx.secure.type;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class SymmetricEncryptionResult {
+public class Result {
     private final String alg;
     private final String iv;
     private final String ct;
     private final String tag;
+    private final String epub;
 
-    public SymmetricEncryptionResult(String alg, String iv, String ct, String tag) {
+    public Result(String alg, String iv, String ct, String tag, String epk) {
         this.alg = alg;
         this.iv = iv;
         this.ct = ct;
         this.tag = tag;
+        this.epub = epk;
     }
 
-    public SymmetricEncryptionResult(JSONObject obj) throws JSONException {
+    public Result(JSONObject obj) throws JSONException {
         this.alg = obj.getString("alg");
         this.iv = obj.getString("iv");
         this.ct = obj.getString("ct");
         this.tag = obj.getString("tag");
+        this.epub = obj.getString("epub");
     }
 
-    public SymmetricEncryptionResult(String json) throws JSONException {
+    public Result(String json) throws JSONException {
         this(new JSONObject(json));
     }
 
@@ -43,12 +46,25 @@ public class SymmetricEncryptionResult {
         return tag;
     }
 
+    public String getEpub() {
+        return epub;
+    }
+
     public JSONObject toJson() throws JSONException {
         JSONObject obj = new JSONObject();
         obj.put("alg", alg);
         obj.put("iv", iv);
         obj.put("ct", ct);
         obj.put("tag", tag);
+        obj.put("epub", epub);
         return obj;
+    }
+
+    public String toJsonString() {
+        try {
+            return toJson().toString();
+        } catch (JSONException e) {
+            throw new RuntimeException("Failed to convert to JSON string", e);
+        }
     }
 }
